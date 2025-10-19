@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const BASE_URL = 'https://mate.academy/students-api';
 
-// a promise resolved after a given delay
 function wait(delay: number) {
   return new Promise(resolve => setTimeout(resolve, delay));
 }
@@ -13,32 +11,23 @@ async function request<T>(
   method: RequestMethod = 'GET',
   data: any = null,
 ): Promise<T> {
-  const options: RequestInit = { method, headers: {} };
+  const options: RequestInit = { method };
 
   if (data !== null && data !== undefined) {
     options.body = JSON.stringify(data);
-    options.headers = {
-      'Content-Type': 'application/json; charset=UTF-8',
-    };
+    options.headers = { 'Content-Type': 'application/json; charset=UTF-8' };
   }
 
-  await wait(300); // simulate delay
-
+  await wait(300);
   const response = await fetch(BASE_URL + url, options);
 
   if (!response.ok) {
-    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+    throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  if (response.status === 204) {
-    return null as unknown as T; // handle empty response
-  }
+  if (response.status === 204) return null as unknown as T;
 
-  try {
-    return await response.json();
-  } catch {
-    throw new Error('Failed to parse JSON response');
-  }
+  return response.json();
 }
 
 export const fetchClient = {

@@ -1,66 +1,76 @@
 <template>
-  <form @submit.prevent="handleSubmit">
-    <div class="field" data-cy="NameField">
-      <label class="label">Name</label>
-      <input
-        type="text"
-        v-model="name"
-        :class="{ 'is-danger': errors.name }"
-        @input="errors.name = ''; submitError = null"
-      />
+  <div class="block">
+    <h5 class="title is-6">Add Comment</h5>
+
+    <input
+      class="input mb-1"
+      placeholder="Name"
+      v-model="form.name"
+    />
+    <p v-if="errors.name" class="help is-danger">{{ errors.name }}</p>
+
+    <input
+      class="input mb-1"
+      placeholder="Email"
+      v-model="form.email"
+    />
+    <p v-if="errors.email" class="help is-danger">{{ errors.email }}</p>
+
+    <textarea
+      class="textarea mb-1"
+      placeholder="Comment"
+      v-model="form.body"
+    ></textarea>
+    <p v-if="errors.body" class="help is-danger">{{ errors.body }}</p>
+
+    <div class="buttons">
+      <button class="button is-success" :disabled="isLoading" @click="submit">
+        Add
+      </button>
+      <button class="button" :disabled="isLoading" @click="clearBody">Clear</button>
     </div>
-    <div class="field" data-cy="EmailField">
-      <label class="label">Email</label>
-      <input
-        type="email"
-        v-model="email"
-        :class="{ 'is-danger': errors.email }"
-        @input="errors.email = ''; submitError = null"
-      />
-    </div>
-    <div class="field" data-cy="BodyField">
-      <label class="label">Comment</label>
-      <textarea
-        v-model="body"
-        :class="{ 'is-danger': errors.body }"
-        @input="errors.body = ''; submitError = null"
-      />
-    </div>
-    <button type="submit" class="button is-primary">Submit</button>
-    <p v-if="submitError" class="has-text-danger">{{ submitError }}</p>
-  </form>
+  </div>
 </template>
 
-<script setup lang="ts">
-import { ref } from 'vue';
+<script lang="ts">
+import { defineComponent, reactive, ref } from 'vue';
 import { fetchClient } from '../utils/fetchClient';
+import { Comment } from '../types/Post';
 
-const props = defineProps<{ postId: number }>();
-const emit = defineEmits<{ (e: 'onAdd', comment: any): void }>();
+export default defineComponent({
+  props: { postId: { type: Number, required: true } },
+  emits: ['comment-added'],
+  setup(props, { emit }) {
+    const form = reactive({ name: '', email: '', body: '' });
+    const errors = reactive({ name: '', email: '', body: '' });
+    const isLoading = ref(false);
 
-const name = ref('');
-const email = ref('');
-const body = ref('');
-const errors = ref({ name: '', email: '', body: '' });
-const submitError = ref<string | null>(null);
-const isSubmitting = ref(false);
+    const validate = () => {
+      let valid = true;
+      errors.name = form.name.trim() ? '' : 'Name is required';
+      errors.email = form.email.trim() ? '' : 'Email is required';
+      errors.body = form.body.trim() ? '' : 'Comment body is required';
+      if (errors.name || errors.email || errors.body) valid = false;
+      return valid;
+    };
 
-const handleSubmit = async () => {
-  isSubmitting.value = true;
-  try {
-    const newComment = await fetchClient.post('/comments', {
-      postId: props.postId,
-      name: name.value,
-      email: email.value,
-      body: body.value,
-    });
-    emit('onAdd', newComment);
-    body.value = '';
-    errors.value.body = '';
-  } catch (err: any) {
-    submitError.value = err.message || 'Error submitting comment';
-  } finally {
-    isSubmitting.value = false;
+    const submit = async () => {
+      if (!validate()) return;
+      isLoading.value = true;
+      try {
+        const created: Comment = await fetchClient.post(`/comments`, { ...form, postId: props.postId });
+        emit('comment-added', created);
+        form.body = '';
+      } catch {
+        console.error('Failed to add comment');
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    const clearBody = () => { form.body = ''; errors.body = ''; };
+
+    return { form, errors, isLoading, submit, clearBody };
   }
-};
+});
 </script>

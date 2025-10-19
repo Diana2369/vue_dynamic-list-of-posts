@@ -3,7 +3,7 @@
     <div class="container">
       <div class="tile is-ancestor">
 
-        <!-- Sidebar и список -->
+        <!-- Список пользователей и постов -->
         <div class="tile is-parent">
           <div class="tile is-child box is-success">
             <div class="block">
@@ -15,34 +15,35 @@
             </div>
 
             <div class="block" data-cy="MainContent">
-              <p v-if="!selectedUser" data-cy="NoSelectedUser">No user selected</p>
+              <div v-if="isLoadingUsers"><Loader /></div>
+              <p v-else-if="!selectedUser" data-cy="NoSelectedUser">No user selected</p>
 
-              <div v-if="selectedUser && isLoadingPosts"><Loader /></div>
-
-              <div v-if="selectedUser && hasErrorPosts" class="notification is-danger" data-cy="PostsLoadingError">
-                Something went wrong!
-              </div>
-
-              <div v-if="selectedUser && !isLoadingPosts && !hasErrorPosts">
-                <PostsList
-                  v-if="posts.length > 0"
-                  :posts="posts"
-                  :selected-post-id="selectedPostId"
-                  @post-select="handlePostSelect"
-                  @create-post="startCreatingPost"
-                />
-                <div v-else class="notification is-warning" data-cy="NoPostsYet">
-                  No posts yet
+              <div v-else>
+                <div v-if="isLoadingPosts"><Loader /></div>
+                <div v-else-if="hasErrorPosts" class="notification is-danger" data-cy="PostsLoadingError">
+                  Something went wrong!
                 </div>
+                <div v-else>
+                  <PostsList
+                    v-if="posts.length > 0"
+                    :posts="posts"
+                    :selected-post-id="selectedPostId"
+                    @post-select="handlePostSelect"
+                    @create-post="startCreatingPost"
+                  />
+                  <div v-else class="notification is-warning" data-cy="NoPostsYet">
+                    No posts yet
+                  </div>
 
-                <!-- Кнопка создания нового поста -->
-                <button
-                  class="button is-link mt-3"
-                  @click="startCreatingPost"
-                  data-cy="CreatePostButton"
-                >
-                  Create new post
-                </button>
+                  <!-- Кнопка создания нового поста -->
+                  <button
+                    class="button is-link mt-3"
+                    @click="startCreatingPost"
+                    data-cy="CreatePostButton"
+                  >
+                    Create new post
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -101,7 +102,7 @@ export default defineComponent({
     const isLoadingPosts = ref(false);
     const hasErrorPosts = ref(false);
 
-    const newPost = ref<Post>({ id: 0, userId: 0, title: '', body: '' });
+    const newPost = ref<Post>({ id: 0, userId: 3212, title: '', body: '' });
 
     const selectedPost = computed(() => {
       if (isCreating.value) return null;
@@ -111,7 +112,12 @@ export default defineComponent({
     // --- загрузка пользователей ---
     isLoadingUsers.value = true;
     fetchClient.get<User[]>('/users')
-      .then(data => users.value = data)
+      .then(data => {
+        users.value = data;
+        if (data.length) {
+          selectedUser.value = data[0]; // выбираем первого пользователя по умолчанию
+        }
+      })
       .catch(() => hasErrorUsers.value = true)
       .finally(() => isLoadingUsers.value = false);
 
@@ -130,7 +136,7 @@ export default defineComponent({
         .then(data => posts.value = data)
         .catch(() => hasErrorPosts.value = true)
         .finally(() => isLoadingPosts.value = false);
-    });
+    }, { immediate: true });
 
     const handleUserSelect = (user: User) => {
       selectedUser.value = user;
@@ -146,7 +152,7 @@ export default defineComponent({
     const startCreatingPost = () => {
       if (!selectedUser.value) return;
       isCreating.value = true;
-      newPost.value = { id: 0, userId: selectedUser.value.id, title: '', body: '' };
+      newPost.value = { id: 0, userId: 3212, title: '', body: '' };
       selectedPostId.value = null;
     };
 
@@ -154,14 +160,22 @@ export default defineComponent({
       isCreating.value = false;
     };
 
+    // --- create post с ожиданием ответа ---
     const createPost = async (post: Post) => {
+      // Оптимистичное добавление с временным id = 0
+      const tempPost: Post = { ...post, id: 0 };
+      posts.value.push(tempPost);
+      selectedPostId.value = tempPost.id;
       try {
         const created = await fetchClient.post<Post>('/posts', post);
-        posts.value.push(created);
+        const idx = posts.value.findIndex(p => p.id === 0);
+        if (idx !== -1) posts.value[idx] = created;
         selectedPostId.value = created.id;
-        isCreating.value = false;
       } catch {
-        alert('Failed to create post');
+        // уведомление вместо alert
+        console.error('Failed to create post');
+      } finally {
+        isCreating.value = false;
       }
     };
 
