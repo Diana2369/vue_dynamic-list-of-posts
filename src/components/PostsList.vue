@@ -1,38 +1,46 @@
 <template>
   <div data-cy="PostsList">
-    <p class="title">Posts:</p>
-    <table class="table is-fullwidth is-striped is-hoverable is-narrow">
-      <thead>
-        <tr class="has-background-link-light">
-          <th>#</th>
-          <th>Title</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="post in posts" :key="post.id" data-cy="Post">
-          <td data-cy="PostId">{{ post.id }}</td>
-          <td data-cy="PostTitle">{{ post.title }}</td>
-          <td class="has-text-right is-vcentered">
-            <button
-              class="button"
-              :class="selectedPostId === post.id ? '' : 'is-light is-link'"
-              @click="$emit('postSelect', selectedPostId === post.id ? null : post.id)"
-              data-cy="PostButton"
-            >
-              {{ selectedPostId === post.id ? 'Close' : 'Open' }}
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="level">
+      <p class="title level-left">Posts:</p>
+      <button
+        class="button is-primary level-right"
+        data-cy="CreatePostButton"
+        @click="$emit('createPost')"
+      >
+        Create new post
+      </button>
+    </div>
+
+    <div v-for="post in posts" :key="post.id" class="box">
+      <p>{{ post.title }}</p>
+      <button
+        class="button is-light is-link"
+        :class="{ 'is-selected': selectedPostId === post.id }"
+        @click="$emit('postSelect', selectedPostId === post.id ? null : post.id)"
+      >
+        Select
+      </button>
+    </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'PostsList',
-  props: ['posts', 'selectedPostId'],
-  emits: ['postSelect'],
-};
+<script setup lang="ts">
+defineProps({
+  posts: Array,
+  selectedPostId: [Number, String, null],
+});
+
+defineEmits(['postSelect', 'createPost']);
 </script>
+
+<style scoped>
+.level {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.box {
+  margin-bottom: 0.5rem;
+}
+</style>

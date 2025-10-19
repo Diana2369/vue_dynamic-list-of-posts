@@ -3,38 +3,47 @@ const BASE_URL = 'https://mate.academy/students-api';
 
 // a promise resolved after a given delay
 function wait(delay: number) {
-  return new Promise(resolve => {
-    setTimeout(resolve, delay);
-  });
+  return new Promise(resolve => setTimeout(resolve, delay));
 }
 
-// To have autocompletion and avoid mistypes
 type RequestMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
-function request<T>(
+async function request<T>(
   url: string,
   method: RequestMethod = 'GET',
-  data: any = null, // we can send any data to the server
+  data: any = null,
 ): Promise<T> {
-  const options: RequestInit = { method };
+  const options: RequestInit = { method, headers: {} };
 
-  if (data) {
-    // We add body and Content-Type only for the requests with data
+  if (data !== null && data !== undefined) {
     options.body = JSON.stringify(data);
     options.headers = {
       'Content-Type': 'application/json; charset=UTF-8',
     };
   }
 
-  // for a demo purpose we emulate a delay to see if Loaders work
-  return wait(300)
-    .then(() => fetch(BASE_URL + url, options))
-    .then(response => response.json());
+  await wait(300); // simulate delay
+
+  const response = await fetch(BASE_URL + url, options);
+
+  if (!response.ok) {
+    throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+  }
+
+  if (response.status === 204) {
+    return null as unknown as T; // handle empty response
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    throw new Error('Failed to parse JSON response');
+  }
 }
 
 export const fetchClient = {
   get: <T>(url: string) => request<T>(url),
   post: <T>(url: string, data: any) => request<T>(url, 'POST', data),
   patch: <T>(url: string, data: any) => request<T>(url, 'PATCH', data),
-  delete: (url: string) => request(url, 'DELETE'),
+  delete: <T>(url: string) => request<T>(url, 'DELETE'),
 };
